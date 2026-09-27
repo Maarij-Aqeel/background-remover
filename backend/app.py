@@ -22,7 +22,8 @@ image = (
         "python-multipart",
         "sam2",
         "kornia",
-        "timm"
+        "timm",
+        "opencv-python-headless"
     )
     .run_function(download_rmbg_weights, secrets=[modal.Secret.from_name("huggingface-secret")])
     .run_function(download_sam_weights)

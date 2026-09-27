@@ -1,10 +1,11 @@
 import io
+import os
 import modal
-from fastapi import UploadFile, File, Response
+from fastapi import UploadFile, File, Response, Request, HTTPException, status
 
 from backend.app import app
 
-@app.cls(gpu="t4", scaledown_window=60, secrets=[modal.Secret.from_name("huggingface-secret")])
+@app.cls(gpu="t4", scaledown_window=30, secrets=[modal.Secret.from_name("huggingface-secret"), modal.Secret.from_name("api-auth-secret")])
 class AutoRemover:
     @modal.enter()
     def enter(self):
@@ -20,7 +21,13 @@ class AutoRemover:
         print("Model loaded successfully.")
 
     @modal.fastapi_endpoint(method="POST", docs=True)
-    async def process(self, image: UploadFile = File(...)):
+    async def process(self, request: Request, image: UploadFile = File(...)):
+        # Security Check
+        auth_header = request.headers.get("Authorization")
+        expected_key = os.environ.get("API_KEY")
+        if not expected_key or auth_header != f"Bearer {expected_key}":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized: Invalid or missing API Key")
+
         from PIL import Image
         import torch
         from torchvision import transforms
